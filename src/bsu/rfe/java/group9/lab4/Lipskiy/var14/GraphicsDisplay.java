@@ -202,11 +202,6 @@ public class GraphicsDisplay extends JPanel {
 	protected void paintMarkers(Graphics2D canvas) {
 		// Шаг 1 - Установить специальное перо для черчения контуров маркеров
 		canvas.setStroke(markerStroke);
-		// Выбрать красный цвета для контуров маркеров
-		canvas.setColor(Color.RED);
-		// Выбрать красный цвет для закрашивания маркеров внутри
-		canvas.setPaint(Color.RED);
-		// Шаг 2 - Организовать цикл по всем точкам графика
 		double curY,curX,b,m,tempY;
 		prevX = minX;
 		prevY = minY;
@@ -214,25 +209,39 @@ public class GraphicsDisplay extends JPanel {
 		
 
 		for (Double[] point : graphicsData) {
+			// Выбрать красный цвета для контуров маркеров
+			canvas.setColor(Color.GREEN);
+			// Выбрать красный цвет для закрашивания маркеров внутри
+			canvas.setPaint(Color.GREEN);
+			// Шаг 2 - Организовать цикл по всем точкам графика
 			tempY = (double)((int)(prevY));
 			curY = tempY + (1 - Math.abs(tempY % 2)); //starting value of y to go from it by odd numbers with +2 
 			m=(point[1]-prevY)/(point[0]-prevX); // calclulate the slope of the current segment
 			b=point[1]-m*point[0];
-			while (curY <= point[1]) {
+			/*
+			 * Эллипс будет задаваться посредством указания координат его центра и угла
+			 * прямоугольника, в который он вписан
+			 */
+			// Центр - в точке (x,y)
+
+            Ellipse2D.Double marker2 = new Ellipse2D.Double();
+			Point2D.Double center2 = xyToPoint(point[0], point[1]);
+			Point2D.Double corner = shiftPoint(center2, 3, 3);
+			marker2.setFrameFromCenter(center2, corner);
+			canvas.fill(marker2); // Залить внутреннюю область маркера
+			canvas.draw(marker2); // Залить внутреннюю область маркера
+			// Выбрать красный цвета для контуров маркеров
+			canvas.setColor(Color.RED);
+			// Выбрать красный цвет для закрашивания маркеров внутри
+			canvas.setPaint(Color.RED);
+			// Шаг 2 - Организовать цикл по всем точкам графика
+		while (curY <= point[1]) {
                  curX=(curY-b)*(1/m);
 				// Инициализировать прямоугольник как объект для представления маркера
-//				Rectangle2D.Double marker = new Rectangle2D.Double();
-				GeneralPath marker = new GeneralPath();
-				/*
-				 * Эллипс будет задаваться посредством указания координат его центра и угла
-				 * прямоугольника, в который он вписан
-				 */
-				// Центр - в точке (x,y)
 
-//				Point2D.Double center = xyToPoint(point[0], point[1]);
+				GeneralPath marker = new GeneralPath();
 				Point2D.Double center = xyToPoint(curX, curY);
-				// Угол прямоугольника - отстоит на расстоянии (5,5)
-//				Point2D.Double corner = shiftPoint(center, 5, 5);
+				// Угол элипса - отстоит на расстоянии (3,3)
 				// Задать эллипс по центру и диагонали
 				marker.moveTo(center.getX()-markerSize, center.getY());
 				marker.lineTo(center.getX(), center.getY()-markerSize);
@@ -240,7 +249,6 @@ public class GraphicsDisplay extends JPanel {
 				marker.lineTo(center.getX(), center.getY()+markerSize);
 				marker.lineTo(center.getX()-markerSize, center.getY());
 				
-				canvas.fill(marker); // Залить внутреннюю область маркера
 				canvas.draw(marker); // Начертить контур маркера
 				curY=curY+2;
 			}
@@ -250,6 +258,7 @@ public class GraphicsDisplay extends JPanel {
 		}
 	}
 
+	
 // Метод, обеспечивающий отображение осей координат
 	protected void paintAxis(Graphics2D canvas) {
 		// Установить особое начертание для осей
@@ -264,6 +273,28 @@ public class GraphicsDisplay extends JPanel {
 		// устройства (экрана)
 		FontRenderContext context = canvas.getFontRenderContext();
 		// Определить, должна ли быть видна ось Y на графике
+		
+		if (minY <= 0.0 && maxY >= 0.0) {
+			Rectangle2D bounds = axisFont.getStringBounds("(1,0)", context);
+			Point2D.Double droplabelPos = xyToPoint(1,0);
+			// Вывести надпись в точке с вычисленными координатами
+			canvas.drawString("1", (float)droplabelPos.getX()+5,
+			(float)(droplabelPos.getY()));
+			GeneralPath chert = new GeneralPath();
+			// Установить начальную точку ломаной точно на верхний конец оси Y
+			Point2D.Double lineEnd = xyToPoint(0, 1);
+			chert.moveTo(lineEnd.getX(), lineEnd.getY());
+			// Вести левый "скат" стрелки в точку с относительными координатами (5,20)
+			chert.lineTo(chert.getCurrentPoint().getX()+1,
+			chert.getCurrentPoint().getY());
+			// Вести нижнюю часть стрелки в точку с относительными координатами (-10, 0)
+			chert.lineTo(chert.getCurrentPoint().getX()-10,
+			chert.getCurrentPoint().getY());
+			chert.closePath();
+			canvas.draw(chert); // Нарисовать стрелку
+			canvas.fill(chert);
+		}
+		
 		if (minX <= 0.0 && maxX >= 0.0) {
 			// Она должна быть видна, если левая граница показываемой области (minX) <= 0.0,
 			// а правая (maxX) >= 0.0
@@ -289,7 +320,7 @@ public class GraphicsDisplay extends JPanel {
 			// Вывести надпись в точке с вычисленными координатами
 
 			canvas.drawString("y", (float) labelPos.getX() + 10, (float) (labelPos.getY() - bounds.getY()));
-			canvas.drawString("0", (float) labelPosOrigin.getX()+5, (float) (labelPosOrigin.getY())+30);
+//			canvas.drawString("0", (float) labelPosOrigin.getX()+5, (float) (labelPosOrigin.getY())+30);
 		}
 		// Определить, должна ли быть видна ось X на графике
 		if (minY <= 0.0 && maxY >= 0.0) {
